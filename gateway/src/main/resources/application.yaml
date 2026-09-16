@@ -49,3 +49,13 @@ spring:
             allowed-headers:
               -  "*"
             allowCredentials: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - gateway
+  endpoint:
+    gateway:
+      enabled: true
