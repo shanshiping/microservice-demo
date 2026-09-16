@@ -57,8 +57,23 @@ management:
   endpoints:
     web:
       exposure:
-        include:
-          - gateway
+        include: health,info,gateway
   endpoint:
     gateway:
       enabled: true
+    health:
+      enabled: true
+resilience4j:
+  circuitbreaker:
+    instances:
+      userServiceCircuitBreaker:   # 必须和路由中 name 一致
+        failure-rate-threshold: 50          # 失败率超过50%触发熔断
+        minimum-number-of-calls: 5          # 最少调用5次才开始统计
+        wait-duration-in-open-state: 10s    # 熔断后等待10秒进入半开状态
+        permitted-number-of-calls-in-half-open-state: 3  # 半开状态允许3个探测请求
+        sliding-window-size: 10             # 滑动窗口大小
+        sliding-window-type: COUNT_BASED    # 按请求次数统计
+  timelimiter:
+    instances:
+      userServiceCircuitBreaker:
+        timeout-duration: 3s                # 下游响应超过3秒算超时

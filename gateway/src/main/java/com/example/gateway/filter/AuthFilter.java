@@ -1,4 +1,4 @@
-package com.spring.gateway.filter;
+package com.example.gateway.filter;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -6,8 +6,11 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
+import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
@@ -37,6 +40,10 @@ public class AuthFilter implements GlobalFilter, Ordered {
             String path = request.getURI().getPath();
             System.out.println(">>> [AuthFilter] 请求路径: " + path);
 
+            // 放行 actuator 和 fallback 路径，不走鉴权
+            if (path.startsWith("/actuator") || path.startsWith("/fallback")) {
+                return chain.filter(exchange);
+            }
             // 白名单放行
             if (WHITE_LIST.stream().anyMatch(path::startsWith)) {
                 System.out.println(">>> [AuthFilter] 白名单路径，放行");
@@ -44,15 +51,14 @@ public class AuthFilter implements GlobalFilter, Ordered {
             }
 
             // 获取 Token
-            String token = request.getHeaders().getFirst("Authorization");
-            System.out.println(">>> [AuthFilter] 当前使用的密钥: [" + SECRET_KEY + "]");
-            System.out.println(">>> [AuthFilter] 密钥长度: " + SECRET_KEY.length());
-            System.out.println(">>> [AuthFilter] Authorization 头: " + (token == null ? "null" : token.substring(0, Math.min(20, token.length())) + "..."));
-
+            String token = exchange.getRequest().getHeaders().getFirst("Authorization");
             if (token == null || !token.startsWith("Bearer ")) {
-                System.out.println(">>> [AuthFilter] Token 为空或格式错误");
-                exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-                return exchange.getResponse().setComplete();
+                ServerHttpResponse response = exchange.getResponse();
+                response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+                DataBuffer buffer = response.bufferFactory()
+                        .wrap("{\"code\":401,\"message\":\"未授权\"}".getBytes());
+                return response.writeWith(Mono.just(buffer));  // ← 写入响应体再关闭
             }
 
             // 解析 Token

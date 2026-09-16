@@ -1,4 +1,4 @@
-package com.spring.gateway.controller;
+package com.example.gateway.controller;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;

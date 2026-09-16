@@ -1,4 +1,4 @@
-package com.spring.gateway.utils;
+package com.example.gateway.utils;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
