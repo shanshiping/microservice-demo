@@ -14,9 +14,14 @@ spring:
       config:
         import-check:
           enabled: false
-
+    circuitbreaker:
+      sentinel:
+        enabled: true
     # Gateway 核心配置
     gateway:
+      httpclient:
+        connect-timeout: 1000
+        response-timeout: 2s
       # 开启基于服务发现的动态路由
       discovery:
         locator:
@@ -25,21 +30,27 @@ spring:
 
       # 自定义路由规则
       routes:
-        # 路由1：用户服务
         - id: user-service-route
-          uri: lb://user-service   # lb:// 表示负载均衡，从 Nacos 获取实例列表
+          uri: lb://user-service
           predicates:
-            - Path=/api/user/**    # 匹配以 /api/user/ 开头的请求
+            - Path=/api/user/**
           filters:
-            - StripPrefix=1        # 去掉1级前缀：/api/user/1 → /user/1
+            - name: StripPrefix
+              args:
+                parts: 1
+            - name: CircuitBreaker
+              args:
+                name: userServiceCircuitBreaker
+                fallbackUri: forward:/fallback/user
 
-        # 路由2：订单服务
         - id: order-service-route
           uri: lb://order-service
           predicates:
             - Path=/api/order/**
           filters:
-            - StripPrefix=1
+            - name: StripPrefix
+              args:
+                parts: 1
 
       # 全局跨域配置（前后端分离必备）
       globalcors:
@@ -63,17 +74,16 @@ management:
       enabled: true
     health:
       enabled: true
-resilience4j:
-  circuitbreaker:
-    instances:
-      userServiceCircuitBreaker:   # 必须和路由中 name 一致
-        failure-rate-threshold: 50          # 失败率超过50%触发熔断
-        minimum-number-of-calls: 5          # 最少调用5次才开始统计
-        wait-duration-in-open-state: 10s    # 熔断后等待10秒进入半开状态
-        permitted-number-of-calls-in-half-open-state: 3  # 半开状态允许3个探测请求
-        sliding-window-size: 10             # 滑动窗口大小
-        sliding-window-type: COUNT_BASED    # 按请求次数统计
-  timelimiter:
-    instances:
-      userServiceCircuitBreaker:
-        timeout-duration: 3s                # 下游响应超过3秒算超时
+sentinel:
+  filter:
+    enabled: true
+  scg:
+    fallback:
+      mode: response status=503
+  datasource:
+    gw-flow:
+      nacos:
+        server-addr: ${spring.cloud.nacos.discovery.server-addr}
+        data-id: ${spring.application.name}-gw-flow-rules
+        group-id: SENTINEL_GROUP
+        rule-type: gw-flow
