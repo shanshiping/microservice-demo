@@ -1,6 +1,11 @@
 spring:
   application:
     name: order-service
+  cloud:
+    nacos:
+      config:
+        import-check:
+          enabled: false
 
 server:
   port: 8081

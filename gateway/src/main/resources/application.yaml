@@ -11,6 +11,9 @@ spring:
       discovery:
         server-addr: 127.0.0.1:8848
         namespace:   # 和你其他服务保持一致
+      config:
+        import-check:
+          enabled: false
 
     # Gateway 核心配置
     gateway:

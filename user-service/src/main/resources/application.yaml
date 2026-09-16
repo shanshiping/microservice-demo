@@ -4,6 +4,10 @@ spring:
   cloud:
     openfeign:
       enabled: true
+    nacos:
+      config:
+        import-check:
+          enabled: false
 
 server:
   port: 8082
