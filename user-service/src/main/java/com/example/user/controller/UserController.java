@@ -28,4 +28,14 @@ public class UserController {
     public List<User> getAllUsers() {
         return userService.getAllUsers();
     }
+
+    @GetMapping("/getInfo")
+    public String getInfo() {
+        double random = Math.random();
+        if (random > 0.5) {
+            throw new RuntimeException("模拟业务异常，测试熔断");
+        }
+        return "user getInfo success";
+    }
+
 }

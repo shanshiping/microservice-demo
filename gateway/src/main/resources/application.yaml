@@ -1,34 +1,49 @@
 server:
-  port: 10000  # 网关端口，所有外部请求统一走这个端口
+  port: 10000
 
 spring:
   application:
     name: gateway
 
   cloud:
-    # Nacos 配置
     nacos:
       discovery:
         server-addr: 127.0.0.1:8848
-        namespace:   # 和你其他服务保持一致
+        namespace:
       config:
         import-check:
           enabled: false
     circuitbreaker:
       sentinel:
         enabled: true
-    # Gateway 核心配置
+    sentinel:
+      transport:
+        dashboard: 127.0.0.1:8080
+        port: 8719
+      filter:
+        enabled: true
+      datasource:
+        gw-flow:
+          nacos:
+            server-addr: ${spring.cloud.nacos.discovery.server-addr}
+            data-id: ${spring.application.name}-gw-flow-rules
+            group-id: SENTINEL_GROUP
+            rule-type: gw-flow
+        degrade:
+          nacos:
+            server-addr: ${spring.cloud.nacos.discovery.server-addr}
+            data-id: ${spring.application.name}-degrade-rules
+            group-id: SENTINEL_GROUP
+            rule-type: DEGRADE
+
     gateway:
       httpclient:
         connect-timeout: 1000
         response-timeout: 2s
-      # 开启基于服务发现的动态路由
       discovery:
         locator:
-          enabled: true          # 开启后，网关自动从 Nacos 拉取服务列表
-          lower-case-service-id: true  # 服务名转小写，避免大小写匹配问题
-
-      # 自定义路由规则
+          enabled: true
+          lower-case-service-id: true
       routes:
         - id: user-service-route
           uri: lb://user-service
@@ -42,7 +57,6 @@ spring:
               args:
                 name: userServiceCircuitBreaker
                 fallbackUri: forward:/fallback/user
-
         - id: order-service-route
           uri: lb://order-service
           predicates:
@@ -51,39 +65,26 @@ spring:
             - name: StripPrefix
               args:
                 parts: 1
-
-      # 全局跨域配置（前后端分离必备）
       globalcors:
         cors-configurations:
           '[/**]':
             allowed-origin-patterns:
-              -  "*"
+              - "*"
             allowed-methods:
-              -  "*"
+              - "*"
             allowed-headers:
-              -  "*"
+              - "*"
             allowCredentials: true
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,gateway
+        include: health,info,gateway,sentinel
   endpoint:
     gateway:
       enabled: true
     health:
       enabled: true
-sentinel:
-  filter:
-    enabled: true
-  scg:
-    fallback:
-      mode: response status=503
-  datasource:
-    gw-flow:
-      nacos:
-        server-addr: ${spring.cloud.nacos.discovery.server-addr}
-        data-id: ${spring.application.name}-gw-flow-rules
-        group-id: SENTINEL_GROUP
-        rule-type: gw-flow
+    sentinel:
+      enabled: true
